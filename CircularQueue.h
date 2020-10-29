@@ -43,6 +43,17 @@ bool CircularQueue_Pop(CircularQueue * params, void ** value);
 bool CircularQueue_isFull(CircularQueue * params);
 bool CircularQueue_isEmpty(CircularQueue * params);
 
-float CircularQueue_getAverage(CircularQueue * params);
+
+// These functions assume unsigned arithmetic types
+uint64_t CircularQueue_getSumUInt(CircularQueue * params);
+float CircularQueue_getAverageUInt(CircularQueue * params);
+
+// These functions assume signed arithmetic types
+int64_t CircularQueue_getSumInt(CircularQueue * params);
+float CircularQueue_getAverageInt(CircularQueue * params);
+
+// These functions assume floating point types
+float CircularQueue_getSumFloat(CircularQueue * params);
+float CircularQueue_getAverageFloat(CircularQueue * params);
 
 #endif //CIRCULARQUEUE_H_
