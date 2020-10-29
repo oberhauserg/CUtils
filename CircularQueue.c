@@ -100,7 +100,9 @@ float CircularQueue_getAverage(CircularQueue * params)
 #define BOOL_TO_STR(boolean) boolean ? "true" : "false"
 
 bool byte_push_expected_values[16] = {true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false};
-uint8_t byte_pop_expected_values[16] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 14, 14, 14, 14, 14};
+//uint8_t byte_pop_expected_values[16] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 14, 14, 14, 14, 14};
+uint8_t byte_pop_expected_values[16] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 14, 14, 14, 14, 14};
+
 
 #define MAX(a,b) ((a) > (b) ? a : b)
 #define MIN(a,b) ((a) < (b) ? a : b)
@@ -144,12 +146,15 @@ bool cq_byte_test()
 
 
 
-void main()
+int main()
 {
 
     bool test_passed = true;
 
     test_passed = cq_byte_test();
+
+    if(!test_passed)
+        return 1;
 
     //test_passed = cq_byte_test() && test_passed;
 
