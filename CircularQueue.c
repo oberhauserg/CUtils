@@ -3,194 +3,202 @@
 #include <stdio.h>
 
 
-void CircularQueue_initParams(cq_parameter * params, void * queue, cq_parameter type, cq_parameter queueSize)
+void CircularQueue_initParams(CircularQueue * params, void * queue, size_t type_size, cq_parameter queueSize)
 {
 
-    params[CQ_SIZE_PARAM]    = queueSize;
-    params[CQ_LENGTH_PARAM]  = 0;
-    params[CQ_START_PARAM]   = 0;
-    params[CQ_END_PARAM]     = 0;
-    params[CQ_TYPE_PARAM]    = type;
+    params->size    = queueSize;
+    params->length  = 0;
+    params->start   = 0;
+    params->end     = 0;
+    params->type    = type_size;
 
-
-    params[CQ_ADDRESS_PARAM] = (cq_parameter)queue;
+    params->array_position = (uint64_t)queue;
 
 }
 
-void CircularQueue_Push(cq_parameter * params, void* value)
+bool CircularQueue_Push(CircularQueue * params, void* value)
 {
 
-    cq_parameter * end;
-    cq_parameter * length;
-
-    uint8_t * array;
+    bool insert_success = false;
 
     if(!CircularQueue_isFull(params))
     {
-        // The queue is not full
-        end = &params[CQ_END_PARAM];
-        length = &params[CQ_LENGTH_PARAM];
 
-        switch(((cq_parameter *)params)[CQ_TYPE_PARAM])
+        for(size_t i = 0; i < params->type; i++)
         {
-
-            case CQ_TYPE_UINT8_T:
-            
-                ((uint8_t*)params[CQ_ADDRESS_PARAM])[*end] = *(uint8_t*)value;
-
-            break;
-            case CQ_TYPE_UINT16_T:
-
-                ((uint16_t*)params[CQ_ADDRESS_PARAM])[*end] = *(uint16_t*)value;
-
-            break;
-            case CQ_TYPE_UINT32_T:
-
-                ((uint32_t*)params[CQ_ADDRESS_PARAM])[*end] = *(uint32_t*)value;
-
-            break;
-            case CQ_TYPE_FLOAT:
-                
-                ((float*)params[CQ_ADDRESS_PARAM])[*end] = *(float*)value;
-
-            break;                
-
+            *((uint8_t*)params->array_position+params->type*params->end + i) = *(uint8_t*)(value + i);
         }
 
-        if((cq_parameter)end == params[CQ_SIZE_PARAM])
-        {
-            *end = 0;
-        }
-        else
-        {
-            (*end)++;
-        }
+        params->end++;
 
-        length++;
+        if(params->end == params->size)
+        {
+            params->end = 0;
+        }
+    
+        params->length++;
+
+        insert_success = true;
 
     }
 
+    return insert_success;
 
 }
 
-void CircularQueue_Pop(cq_parameter * params, void * value)
+bool CircularQueue_Pop(CircularQueue * params, void ** value)
 {
-    cq_parameter * start;
-    cq_parameter * length;
 
-    uint8_t * array;
-    uint64_t address;
-
+    bool remove_success = false;
 
     if(!CircularQueue_isEmpty(params))
     {
-        // The queue is not empty
-        start = &params[CQ_START_PARAM];
-        length = &params[CQ_LENGTH_PARAM];
 
-        switch(((cq_parameter *)params)[CQ_TYPE_PARAM])
+        *value = (void*)(params->array_position+params->type*params->start);
+
+        params->start++;
+
+        if(params->start == params->size)
         {
-
-            case CQ_TYPE_UINT8_T:
-
-            
-                address = (uint64_t)&(((uint8_t*)params[CQ_ADDRESS_PARAM])[*start]);
-
-                value = (void*)address;
-
-            break;
-            case CQ_TYPE_UINT16_T:
-
-                value = &(((uint16_t*)params[CQ_ADDRESS_PARAM])[*start]);
-
-            break;
-            case CQ_TYPE_UINT32_T:
-
-                value = &(((uint32_t*)params[CQ_ADDRESS_PARAM])[*start]);
-
-            break;
-            case CQ_TYPE_FLOAT:
-                
-                value = &(((float*)params[CQ_ADDRESS_PARAM])[*start]);
-
-            break;                
-
+            params->start = 0;
         }
+        
+        params->length--;
 
-        if((cq_parameter)start == params[CQ_SIZE_PARAM])
-        {
-            *start = 0;
-        }
-        else
-        {
-            (*start)++;
-        }
-
-        length++;
+        remove_success = true;
 
     }
+
+    return remove_success;
+
 }
 
 
-bool CircularQueue_isFull(cq_parameter * params)
+bool CircularQueue_isFull(CircularQueue * params)
 {
-    return params[CQ_START_PARAM] == params[CQ_END_PARAM] && params[CQ_LENGTH_PARAM] > 0;
+    return params->start == params->end && params->length > 0;
 }
 
-bool CircularQueue_isEmpty(cq_parameter * params)
+bool CircularQueue_isEmpty(CircularQueue * params)
 {
-    return params[CQ_START_PARAM] == params[CQ_END_PARAM] && params[CQ_LENGTH_PARAM] == 0;
+    return params->start == params->end && params->length == 0;
 }
 
-float CircularQueue_getAverage(cq_parameter * params)
+float CircularQueue_getAverage(CircularQueue * params)
 {
 
 }
+
+#define ENABLE_CQ_TESTS
+#ifdef ENABLE_CQ_TESTS
+
+#include <math.h>
+
+#define TEST_VALUES_SIZE 16
+#define TEST_QUEUE_SIZE 10
+
+#define BOOL_TO_STR(boolean) boolean ? "true" : "false"
+
+bool byte_push_expected_values[16] = {true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false};
+uint8_t byte_pop_expected_values[16] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 14, 14, 14, 14, 14};
+
+#define MAX(a,b) ((a) > (b) ? a : b)
+#define MIN(a,b) ((a) < (b) ? a : b)
+
+bool cq_byte_test()
+{
+    CircularQueue byteQueue;
+    uint8_t bytes[TEST_QUEUE_SIZE];
+
+    CircularQueue_initParams(&byteQueue, bytes, sizeof(uint8_t), sizeof(bytes)/sizeof(bytes[0]));
+
+    uint8_t byte_test_values[TEST_VALUES_SIZE] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 ,19 , 20};
+
+    for(uint8_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        bool success = CircularQueue_Push(&byteQueue, &byte_test_values[i]);
+        printf("Adding %d to queue. Success: %s Expected %s \n",byte_test_values[i], BOOL_TO_STR(success), BOOL_TO_STR(byte_push_expected_values[i]));
+
+        if(byte_push_expected_values[i] != success)
+            return false;
+    
+    }
+
+    uint8_t * pop_value;
+
+    for(uint8_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        CircularQueue_Pop(&byteQueue, (void**)&pop_value);
+        printf("Popped from queue: %d Expected: %d\n", *pop_value, byte_pop_expected_values[i]);
+
+        if(byte_pop_expected_values[i] != *pop_value)
+            return false;
+
+    }
+
+    return true;
+
+}
+
+
+
+
 
 void main()
 {
 
-    cq_parameter testQueue[CQ_NUM_PARAMS];
-    uint8_t array[10];
+    bool test_passed = true;
 
-    uint8_t value[5] = {5, 6, 7, 8, 9};
+    test_passed = cq_byte_test();
 
-    CircularQueue_initParams(testQueue, array, CQ_TYPE_UINT8_T, 10);
-    
-    printf("Adding %d to queue\n",value[0]);
-    CircularQueue_Push(testQueue, &value[0]);
+    //test_passed = cq_byte_test() && test_passed;
 
-    printf("Adding %d to queue\n",value[1]);
-    CircularQueue_Push(testQueue, &value[1]);
+    CircularQueue shortQueue;
+    uint16_t shorts[10];
 
-    printf("Adding %d to queue\n",value[2]);
-    CircularQueue_Push(testQueue, &value[2]);
+    CircularQueue_initParams(&shortQueue, shorts, sizeof(uint16_t), sizeof(shorts)/sizeof(shorts[0]));
 
-    printf("Adding %d to queue\n",value[3]);
-    CircularQueue_Push(testQueue, &value[3]);
+    uint16_t short_test_values[TEST_VALUES_SIZE] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 ,19 , 20};
 
-    printf("Adding %d to queue\n",value[4]);
-    CircularQueue_Push(testQueue, &value[4]);
+    for(uint16_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        
+        bool success = CircularQueue_Push(&shortQueue, &short_test_values[i]);
+        printf("Adding %d to queue. Success: %s\n",short_test_values[i], success ? "true" : "false");
+    }
 
-    uint8_t * pop_value;
+    uint16_t * short_pop_value;
 
-    CircularQueue_Pop(testQueue, pop_value);
-    printf("Popped from queue: %d\n", *pop_value);
+    for(uint16_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        CircularQueue_Pop(&shortQueue, (void**)&short_pop_value);
+        printf("Popped from queue: %d\n", *short_pop_value);
+    }
 
-    CircularQueue_Pop(testQueue, pop_value);
-    printf("Popped from queue: %d\n", *pop_value);
+    CircularQueue floatQueue;
+    float floats[10];
 
-    CircularQueue_Pop(testQueue, pop_value);
-    printf("Popped from queue: %d\n", *pop_value);
+    CircularQueue_initParams(&floatQueue, floats, sizeof(float), sizeof(floats)/sizeof(floats[0]));
 
-    CircularQueue_Pop(testQueue, pop_value);
-    printf("Popped from queue: %d\n", *pop_value);
+    float float_test_values[TEST_VALUES_SIZE] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 ,19 , 20};
 
-    CircularQueue_Pop(testQueue, pop_value);
-    printf("Popped from queue: %d\n", *pop_value);            
+    for(uint8_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        bool success = CircularQueue_Push(&floatQueue, &float_test_values[i]);
+        printf("Adding %f to queue. Success: %s\n",float_test_values[i], success ? "true" : "false");
+    }
 
+    float * float_pop_value;
+
+    for(uint8_t i = 0; i < TEST_VALUES_SIZE; i++)
+    {
+        CircularQueue_Pop(&floatQueue, (void**)&float_pop_value);
+        printf("Popped from queue: %f\n", *float_pop_value);
+    }
 
 
     printf("haha yes");
 
 }
+
+#endif
